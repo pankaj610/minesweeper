@@ -1,117 +1,117 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
+import React, { useRef } from 'react';
+import { 
+  Alert,
+  Button,
+  StyleSheet, 
   View,
-} from 'react-native';
-
+  useColorScheme,
+} from 'react-native'; 
 import {
   Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
+import Constants from './Constants';
+import Cell, { CellType } from './Cell';
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+const useGameEngine = () => {
+  const boardWidth = Constants.BOARD_SIZE * Constants.CELL_SIZE;
+  const grid = useRef<Array<Array<CellType | null>>>(Array.apply(null, Array(Constants.BOARD_SIZE)).map((el, iex) => {
+    return Array.apply(null, Array(Constants.BOARD_SIZE)).map((el, iey) => {
+      return null;
+    });
+  }));
 
-function Section({children, title}: SectionProps): JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
+  const onDie = () => {
+    console.log('onDie');
+  }
+
+  const reset = () => {
+    for(let i= 0; i < Constants.BOARD_SIZE; i++) {
+      for(let j = 0; j < Constants.BOARD_SIZE; j++) {
+        grid.current[i][j]?.reset?.();
+      }
+    }
+  }
+
+  const revealNeighbors = (x: number, y: number) => {
+    for(let i = -1; i <= 1; i++) {
+      for(let j = -1; j <= 1; j++) {
+        if(x + i >= 0 && x + i <= Constants.BOARD_SIZE - 1 && y + j >= 0 && y + j <= Constants.BOARD_SIZE - 1) {
+          console.log("Reveal neighbors")
+           grid.current?.[x + i]?.[y + j]?.revealCell?.(x, y);
+        }
+      }
+    }
+  }
+
+  const onReveal = (x: number, y: number)=> {
+    let neighbors = 0;
+    for(let i = -1; i <= 1; i++) {
+      for(let j = -1; j <= 1; j++) {
+        if(x + i >= 0 && x + i <= Constants.BOARD_SIZE - 1 && y + j >= 0 && y + j <= Constants.BOARD_SIZE - 1) {
+          if(grid.current?.[x + i]?.[y + j]?.isMine) {
+            neighbors++;
+          }
+        }
+      }
+    }
+    if(neighbors) {
+      console.log(neighbors);
+      grid.current?.[x]?.[y]?.setState?.({
+       neighbors: neighbors,
+     });
+    } else {
+      revealNeighbors(x, y);
+    }
+  }
+
+  const renderGrid = () => {
+    return grid.current.map((row, rowIndex) => { 
+      const cellList = row.map((_, cellIndex) => {
+        return (
+          <Cell onDie={onDie} onReveal={onReveal} key={`${cellIndex}_${rowIndex}`} num={cellIndex} x={rowIndex} y={cellIndex} ref={(ref)=> grid.current[rowIndex][cellIndex] = ref}/>
+        );
+      });
+      return <View style={styles.row}>
+        {cellList}
+      </View>
+    });
+  }
+
+  return { boardWidth, grid, renderGrid, reset };
 }
 
 function App(): JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
+
+  const { boardWidth, renderGrid, reset } = useGameEngine();
 
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
   };
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+    <View style={[styles.container, backgroundStyle]}>
+      <View style={{ width: boardWidth, height: boardWidth }}>
+        {renderGrid()}
+        <Button title='Reset' onPress={reset}/>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  row: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
+
+  container: {
+    flexDirection: 'column',
+    backgroundColor: Colors.lighter,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flex: 1,
   },
 });
 
